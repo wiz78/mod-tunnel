@@ -1,0 +1,51 @@
+$Id: README,v 1.1.1.1 2004-09-13 15:11:42 tellini Exp $
+
+ModTunnelClient             http://mod-tunnel.sourceforge.net 
+
+
+What is it?
+===========
+
+ModTunnelClient is a basic client for mod_tunnel.
+
+
+Who did it?
+===========
+
+Simone Tellini, <tellini@users.sourceforge.net>
+http://tellini.info/
+
+
+Show your support
+=================
+
+If you use this software in a production environment and/or
+you wish to show your support, you can get me something off
+my Amazon wish-list, located at 
+
+http://www.amazon.co.uk/exec/obidos/registry/1K4OWZ581SIRE/ref%3Dwl%5Fs%5F3/026-2575462-0900418
+
+In any case, have fun with it :)
+
+
+Installation
+============
+
+This product includes software developed by the OpenSSL Project
+for use in the OpenSSL Toolkit. (http://www.openssl.org/)
+
+To support https, this program needs the OpenSSL dll's.
+Since there might be some restrictions in distributing them,
+due to laws about strong cryptography which may exist in your
+country, it's up to you to get hold of a working copy of them.
+Don't ask me, sorry.
+
+Anyway, you may try the ones you can find here:
+http://www.slproweb.com/products/Win32OpenSSL.html
+
+
+Configuration
+=============
+
+Edit ModTunnelClient.ini to setup the host to connect to and 
+the details of your proxy (if needed).
