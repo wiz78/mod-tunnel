@@ -1,0 +1,69 @@
+$Id: README,v 1.1.1.1 2004-09-13 15:11:05 tellini Exp $
+
+mod_tunnel                http://mod-tunnel.sourceforge.net 
+
+
+What is it?
+===========
+
+mod_tunnel is a simple Apache 1.3.x module that can be
+used to create TCP tunnels using your web server. It comes 
+handy to expose services which can be reached through a 
+proxy, bypassing firewalls.
+
+
+Who did it?
+===========
+
+Simone Tellini, <tellini@users.sourceforge.net>
+http://tellini.info/
+
+
+Show your support
+=================
+
+If you use this software in a production environment and/or
+you wish to show your support, you can get me something off
+my Amazon wish-list, located at 
+
+http://www.amazon.co.uk/exec/obidos/registry/1K4OWZ581SIRE/ref%3Dwl%5Fs%5F3/026-2575462-0900418
+
+In any case, have fun with it :)
+
+
+Installation
+============
+
+If apxs is not in the path, edit the Makefile and modify
+the APXS variable.
+
+Then "make install" should compile and install the module into
+the correct apache directory.
+
+
+Configuration
+=============
+
+The module adds these configuration directives:
+
+   TunnelEnabled     if set to "on" (without quotes) mod_tunnel will
+                     be enabled for the current virtual host
+
+   TunnelHost        the hostname of the tunnel target
+
+   TunnelPort        the port to connect to
+
+
+The idea is to setup a different virtual host for every service you
+wish to expose (beware: no authentication has been implemented,
+anyone can connect - Apache's authentication may prevent unauthorised
+access: too bad that the current client doesn't support it ;-)
+
+For instance:
+
+<VirtualHost *:443>
+    ServerName     ssh.mydomain.com
+    TunnelEnabled  on
+    TunnelHost     localhost
+    TunnelPort	   22
+</VirtualHost>
