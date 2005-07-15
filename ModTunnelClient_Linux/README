@@ -1,0 +1,52 @@
+$Id: README,v 1.1.1.1 2005-07-15 13:54:06 tellini Exp $
+
+ModTunnelClient             http://mod-tunnel.sourceforge.net 
+
+
+What is it?
+===========
+
+ModTunnelClient is a basic client for mod_tunnel.
+
+
+Who did it?
+===========
+
+Simone Tellini, <tellini@users.sourceforge.net>
+http://tellini.info/
+
+
+Show your support
+=================
+
+If you use this software in a production environment and/or
+you wish to show your support, you can get me something off
+my Amazon wish-list, located at 
+
+http://www.amazon.co.uk/exec/obidos/registry/1K4OWZ581SIRE/ref%3Dwl%5Fs%5F3/026-2575462-0900418
+
+or, if you're on the US side of the ocean:
+
+http://www.amazon.com/gp/registry/4HTWP4885GSB/102-7314012-6767349
+
+In any case, have fun with it :)
+
+
+Installation
+============
+
+$ ./configure
+$ make
+$ make install
+
+
+
+Configuration
+=============
+
+Edit ModTunnelClient.ini to setup the host to connect to and 
+the details of your proxy (if needed), then save it as
+~/.ModTunnelClient.ini
+
+You can now launch modtunnelclient, which will fork and stay
+in the background.
