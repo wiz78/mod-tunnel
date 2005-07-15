@@ -1,0 +1,237 @@
+dnl Process this file with autoconf to produce a configure script.
+
+dnl
+dnl                              configure.in
+dnl                          -------------------
+dnl copyright            : (C) 2005 by Simone Tellini
+dnl email                : tellini@users.sourceforge.net
+dnl revision             : $Id: configure.in,v 1.1.1.1 2005-07-15 13:54:05 tellini Exp $
+dnl
+
+dnl -----------------------------------
+dnl Setup
+dnl -----------------------------------
+
+AC_INIT(src/Makefile.am)
+
+AC_CONFIG_AUX_DIR(config)
+AM_CONFIG_HEADER(src/include/config.h:src/include/config-h.in)
+
+AM_INIT_AUTOMAKE(ModTunnelClient, 1.0)
+
+AC_LANG([C++])
+
+AC_PREFIX_DEFAULT(/usr/local)
+
+dnl -----------------------------------
+dnl Checks for programs.
+dnl -----------------------------------
+AC_PROG_CXX
+AC_PROG_AWK
+AC_PROG_CC
+AC_PROG_CPP
+AC_PROG_INSTALL
+AC_PROG_RANLIB
+AC_CHECK_TOOL( SED, sed )
+
+dnl -----------------------------------
+dnl Check for libltdl
+dnl -----------------------------------
+AC_LIBTOOL_DLOPEN
+dnl AC_DISABLE_STATIC
+AC_PROG_LIBTOOL
+AC_SUBST(LIBTOOL_DEPS)
+
+dnl -----------------------------------
+dnl Check for headers
+dnl -----------------------------------
+AC_HEADER_DIRENT
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_HEADER_TIME
+
+AC_CHECK_HEADERS(string.h strings.h unistd.h syslog.h sys/syslog.h zlib.h)
+
+dnl -----------------------------------
+dnl Checks for typedefs, structures and
+dnl compiler characteristics
+dnl -----------------------------------
+AC_C_CONST
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+
+AC_CACHE_CHECK([for socklen_t], [promac_cv_var_socklen_t],
+[AC_TRY_COMPILE(
+	[#include <sys/types.h>
+	 #include <sys/socket.h>],
+	[socklen_t len; len = 1;],
+	[promac_cv_var_socklen_t=yes],
+	[promac_cv_var_socklen_t=no])
+])
+if test "$promac_cv_var_socklen_t" = no ; then
+	AC_DEFINE( socklen_t, int, [Define to 'int' if <sys/socket.h> doesn't provide it.] )
+fi
+
+AC_CACHE_CHECK([for MSG_NOSIGNAL], [promac_cv_var_msg_no_signal],
+[AC_TRY_COMPILE(
+    [#include <sys/types.h>
+	 #include <sys/socket.h>],
+	[int foo = MSG_NOSIGNAL;],
+	[promac_cv_var_msg_no_signal=yes],
+	[promac_cv_var_msg_no_signal=no])
+])
+if test "$promac_cv_var_msg_no_signal" = no ; then
+	AC_DEFINE( MSG_NOSIGNAL, 0, [Define to 0 if <sys/socket.h> doesn't define MSG_NOSIGNAL.])
+fi
+
+AC_CACHE_CHECK([whether sockaddr_un has sun_len], [promac_cv_var_SOCKADDR_UN_LEN],
+[AC_TRY_COMPILE(
+	[#include <sys/types.h>
+	 #include <sys/socket.h>
+	 #include <sys/un.h>],
+	[struct sockaddr_un addr; addr.sun_len = 1;],
+	[promac_cv_var_SOCKADDR_UN_LEN=yes],
+	[promac_cv_var_SOCKADDR_UN_LEN=no])
+])
+if test "$promac_cv_var_SOCKADDR_UN_LEN" = yes ; then
+	AC_DEFINE( HAVE_SOCKADDR_UN_LEN, 1, [Define if sockaddr_un has the sun_len field] )
+fi
+
+AC_CACHE_CHECK([for msg_accrights field in struct msghdr], promac_cv_have_accrights_in_msghdr, 
+[AC_TRY_RUN(
+	[#include <sys/types.h>
+	 #include <sys/socket.h>
+	 #include <sys/uio.h>
+	 int main() {
+		#ifdef msg_accrights
+		exit(1);
+		#endif
+		struct msghdr m;
+		m.msg_accrights = 0;
+		exit(0);
+	}],
+	[ promac_cv_have_accrights_in_msghdr="yes"],
+	[ promac_cv_have_accrights_in_msghdr="no" ])
+])
+if test "x$promac_cv_have_accrights_in_msghdr" = "xyes" ; then
+	AC_DEFINE( HAVE_ACCRIGHTS_IN_MSGHDR, 1, [Define if msghdr has the msg_accrights field] )
+fi
+
+AC_CACHE_CHECK([for msg_control field in struct msghdr], promac_cv_have_control_in_msghdr,
+[AC_TRY_RUN(
+	[#include <sys/types.h>
+	 #include <sys/socket.h>
+	 #include <sys/uio.h>
+	 int main() {
+		#ifdef msg_control
+		exit(1);
+		#endif
+		struct msghdr m;
+		m.msg_control = 0;
+		exit(0);
+	}],
+	[ promac_cv_have_control_in_msghdr="yes" ],
+	[ promac_cv_have_control_in_msghdr="no" ])
+])
+if test "x$promac_cv_have_control_in_msghdr" = "xyes" ; then
+	AC_DEFINE( HAVE_CONTROL_IN_MSGHDR, 1, [Define if msghdr has the msg_control field] )
+fi
+
+dnl -----------------------------------
+dnl Check for options
+dnl -----------------------------------
+use_ssl="yes"
+AC_ARG_WITH( openssl,
+			[  --with-openssl[[=DIR]]    build with OpenSSL support [[/usr/local/ssl]]],
+			[
+				if test "x$withval" = "x" ; then
+					withval="/usr/local/ssl"
+				fi
+			 
+				case "$withval" in
+					no)
+						openssl_prefix=""
+					;;
+					yes)
+						openssl_prefix="/usr/local/ssl"
+					;;
+					*)
+						openssl_prefix=$withval
+				esac
+			],
+			[openssl_prefix="/usr/local/ssl"]
+)
+if test "x$openssl_prefix" != "x" ; then
+	LDFLAGS="-L${openssl_prefix}/lib ${LDFLAGS}"
+	CPPFLAGS="-I${openssl_prefix}/include ${CPPFLAGS}"
+	use_ssl="yes"
+	AC_DEFINE( USE_SSL, 1, [Define to build with OpenSSL support] )
+else
+	AC_ERROR([OpenSSL is required!])
+fi
+
+
+dnl -----------------------------------
+dnl Check for libraries functions
+dnl -----------------------------------
+AC_CHECK_FUNCS(memset memcpy strdup strncmp)
+AC_CHECK_FUNCS(sendmsg recvmsg)
+
+AC_CHECK_LIB(socket, main)
+AC_CHECK_LIB(nsl, gethostent,, [AC_CHECK_LIB(resolv, gethostbyname)])
+AC_CHECK_LIB(z, deflate)
+
+if test "x$openssl_prefix" != "x" ; then
+  dnl Order matters!
+  AC_CHECK_LIB(crypto, [CRYPTO_new_ex_data], [], [AC_MSG_ERROR([library 'crypto' is required for OpenSSL])])
+  AC_CHECK_LIB(ssl,    [SSL_library_init], [], [AC_MSG_ERROR([library 'ssl' is required for OpenSSL])])
+fi
+
+dnl -----------------------------------
+dnl Misc functions checks
+dnl -----------------------------------
+
+AC_CACHE_CHECK([whether vsyslog accepts a stdarg va_list], [logminerac_cv_var_VSYSLOG],
+[AC_TRY_LINK(
+	[#ifdef HAVE_SYSLOG_H
+	 #include <syslog.h>
+	 #endif
+	 #ifdef HAVE_SYS_SYSLOG_H
+	 #include <sys/syslog.h>
+	 #endif
+	 #include <stdarg.h>],
+	[ void foo( int a, char *b, ... ) { va_list ap; va_start( ap, b ); vsyslog( a, b, ap ); va_end( ap ); } ],
+	[logminerac_cv_var_VSYSLOG=yes],
+	[logminerac_cv_var_VSYSLOG=no])
+])
+
+if test "$logminerac_cv_var_VSYSLOG" = yes ; then
+	AC_DEFINE( HAVE_VSYSLOG, 1, [Define if there is a stdarg-compatible vsyslog function] )
+fi
+
+AC_ARG_ENABLE(debug,
+	[AC_HELP_STRING( [--enable-debug], [enable debug logging] ) ],
+	[use_debug="$enableval"],
+	[use_debug="no"]
+)
+
+if test "$use_debug" = "yes" ; then
+	AC_DEFINE( DEBUG, 1, [Define to 1 to enable debug logging.] )
+fi
+
+dnl -----------------------------------
+dnl Substitute symbols
+dnl -----------------------------------
+AC_SUBST(ac_aux_dir)
+AC_SUBST(sysconfdir)
+AC_SUBST(CPPFLAGS)
+AC_SUBST(CXXFLAGS)
+
+AM_CONDITIONAL(BUILD_WITH_SSL, test "$use_ssl" = "yes" )
+
+dnl -----------------------------------
+dnl Genereate the output files
+dnl -----------------------------------
+AC_OUTPUT([Makefile src/Makefile src/libprom/Makefile src/modtunnelclient/Makefile],
+		  [test -z "$CONFIG_HEADERS" || echo timestamp > src/include/stamp-h.in])
+
