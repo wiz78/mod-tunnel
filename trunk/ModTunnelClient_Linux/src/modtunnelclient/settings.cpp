@@ -1,5 +1,5 @@
 /***************************************************************************
-	revision             : $Id: settings.cpp,v 1.1.1.1 2005-07-15 13:54:06 tellini Exp $
+	revision             : $Id: settings.cpp,v 1.2 2005-07-16 17:56:14 tellini Exp $
     copyright            : (C) 2005 by Simone Tellini
     email                : tellini@users.sourceforge.net
  ***************************************************************************/
@@ -43,7 +43,7 @@ Settings::Settings( const string &file )
 
 					section = line.substr( 1, line.length() - 2 );
 						
-				} else if( !line.empty() && ( line[0] != '#' )) {
+				} else if( !line.empty() && ( line[0] != '#' ) && ( line[0] != ';' )) {
 					string::size_type pos = line.find( "=" );
 					
 					if( pos == string::npos )
