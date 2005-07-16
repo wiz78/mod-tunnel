@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.1.1.1 2005-07-15 13:54:06 tellini Exp $
+# $Id: Makefile.am,v 1.2 2005-07-16 18:42:48 tellini Exp $
 
 MAINTAINERCLEANFILES = Makefile.in
 
@@ -13,12 +13,5 @@ INCLUDES        	= -I$(top_builddir) -I$(top_srcdir) \
 
 modtunnelclient_LDADD = ../libprom/libprom.la
 
-modtunnelclient_SOURCES	= \
-Client.cpp \
-Config.cpp \
-Daemon.cpp \ 
-Main.cpp \
-Resolver.cpp \
-settings.cpp \
-utils.cpp \
-url.cpp 
+modtunnelclient_SOURCES	= Client.cpp Config.cpp Daemon.cpp Main.cpp \
+			  Resolver.cpp settings.cpp utils.cpp url.cpp 
