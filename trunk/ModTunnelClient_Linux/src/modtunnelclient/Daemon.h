@@ -1,5 +1,5 @@
 /***************************************************************************
-	revision             : $Id: Daemon.h,v 1.1.1.1 2005-07-15 13:54:06 tellini Exp $
+	revision             : $Id: Daemon.h,v 1.2 2005-07-18 09:01:14 tellini Exp $
     copyright            : (C) 2002-2004 by Simone Tellini
     email                : tellini@users.sourceforge.net
  ***************************************************************************/
@@ -21,7 +21,7 @@
 class Daemon  
 {
 public:
-					Daemon();
+					Daemon( int argc, const char *argv[] );
 	virtual			~Daemon();
 
 	void			Run( void );

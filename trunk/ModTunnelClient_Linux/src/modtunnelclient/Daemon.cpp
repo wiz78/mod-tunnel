@@ -1,5 +1,5 @@
 /***************************************************************************
-	revision             : $Id: Daemon.cpp,v 1.1.1.1 2005-07-15 13:54:06 tellini Exp $
+	revision             : $Id: Daemon.cpp,v 1.2 2005-07-18 09:01:14 tellini Exp $
     copyright            : (C) 2002-2004 by Simone Tellini
     email                : tellini@users.sourceforge.net
  ***************************************************************************/
@@ -24,8 +24,11 @@
 //---------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------
-Daemon::Daemon()
+Daemon::Daemon( int argc, const char *argv[] )
 {
+	if( argc >= 2 )
+		Config::SetCfgFile( argv[ 1 ] );
+
 	ListenSock = new TcpSocket();
 
 	ListenSock->UseDispatcher( &IO );
