@@ -1,4 +1,4 @@
-$Id: README,v 1.1.1.1 2005-07-15 13:54:06 tellini Exp $
+$Id: README,v 1.2 2005-07-18 09:02:39 tellini Exp $
 
 ModTunnelClient             http://mod-tunnel.sourceforge.net 
 
@@ -50,3 +50,9 @@ the details of your proxy (if needed), then save it as
 
 You can now launch modtunnelclient, which will fork and stay
 in the background.
+
+You can also create different configuration files and specify
+which configuration to load when launching modtunnelclient:
+
+ $ modtunnelclient <path of the config file>
+

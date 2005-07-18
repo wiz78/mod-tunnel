@@ -1,5 +1,5 @@
 /***************************************************************************
-	revision             : $Id: Cfg.h,v 1.1.1.1 2005-07-15 13:54:07 tellini Exp $
+	revision             : $Id: Cfg.h,v 1.2 2005-07-18 09:01:14 tellini Exp $
     copyright            : (C) 2002-2004 by Simone Tellini
     email                : tellini@users.sourceforge.net
  ***************************************************************************/
@@ -22,28 +22,33 @@ using namespace std;
 class Config
 {
 public:
-	static Config&	GetInstance();
+	static Config&		GetInstance();
 
-	int				GetPort() const				{ return( Port ); }
-	int				GetProxyPort() const		{ return( ProxyPort ); }
-	const char		*GetServer() const			{ return( Server.c_str() ); }
-	const char		*GetProxyHost() const		{ return( ProxyHost.c_str() ); }
-	const char		*GetProxyUser() const		{ return( ProxyUser.c_str() ); }
-	const char		*GetProxyPass() const		{ return( ProxyPass.c_str() ); }
+	static void			SetCfgFile( const char *file );
 
-	bool			IsUsingProxy() const		{ return( !ProxyHost.empty() ); }
+	int					GetPort() const				{ return( Port ); }
+	int					GetProxyPort() const		{ return( ProxyPort ); }
+	const char			*GetServer() const			{ return( Server.c_str() ); }
+	const char			*GetProxyHost() const		{ return( ProxyHost.c_str() ); }
+	const char			*GetProxyUser() const		{ return( ProxyUser.c_str() ); }
+	const char			*GetProxyPass() const		{ return( ProxyPass.c_str() ); }
+
+	bool				IsUsingProxy() const		{ return( !ProxyHost.empty() ); }
 
 private:
-	string			Server;
-	string			ProxyHost;
-	string			ProxyUser;
-	string			ProxyPass;
-	int				Port;
-	int				ProxyPort;
+	string				CfgFile;
+	string				Server;
+	string				ProxyHost;
+	string				ProxyUser;
+	string				ProxyPass;
+	int					Port;
+	int					ProxyPort;
+	
+	static Config		*Instance;
 
-					Config();
+						Config( const char *file = NULL );
 
-	void			Load();
+	void				Load( void );
 };
 
 #endif /* CONFIG_H */

@@ -1,5 +1,5 @@
 /***************************************************************************
-	revision             : $Id: Config.cpp,v 1.1.1.1 2005-07-15 13:54:06 tellini Exp $
+	revision             : $Id: Config.cpp,v 1.2 2005-07-18 09:01:14 tellini Exp $
     copyright            : (C) 2002-2004 by Simone Tellini
     email                : tellini@users.sourceforge.net
  ***************************************************************************/
@@ -18,27 +18,40 @@
 #define INI_FILE_NAME ".ModTunnelClient.ini"
 
 //---------------------------------------------------------------------------
-Config::Config()
+Config *Config::Instance = NULL;
+
+//---------------------------------------------------------------------------
+Config::Config( const char *file )
 {
 	Port = 22;
+
+	if( file )
+		CfgFile = file;
+	else
+		CfgFile = string( getenv( "HOME" )) + "/"INI_FILE_NAME;
 
 	Load();
 }
 //---------------------------------------------------------------------------
 Config& Config::GetInstance()
 {
-	static Config *Instance = NULL;
-
 	if( !Instance )
 		Instance = new Config();
 
 	return( *Instance );
 }
 //---------------------------------------------------------------------------
-void Config::Load()
+void Config::SetCfgFile( const char *file )
 {
-	string		file = string( getenv( "HOME" )) + "/"INI_FILE_NAME;
-	Settings	s( file );
+	if( Instance )
+		delete Instance;
+
+	Instance = new Config( file );
+}
+//---------------------------------------------------------------------------
+void Config::Load( void )
+{
+	Settings	s( CfgFile );
 
 	Port      = s.GetInt( "Local", "Port", 22 );
 	Server    = s.GetString( "Server", "URL" );
