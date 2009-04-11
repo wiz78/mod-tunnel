@@ -1,5 +1,5 @@
 /***************************************************************************
-	revision             : $Id: mod_tunnel.h,v 1.1.1.1 2004-09-13 15:11:05 tellini Exp $
+	revision             : $Id: mod_tunnel.h,v 1.2 2009-04-11 17:26:41 tellini Exp $
     copyright            : (C) 2004 by Simone Tellini
     email                : tellini@users.sourceforge.net
  ***************************************************************************/
@@ -22,13 +22,14 @@
 #include "http_config.h"
 #include "http_log.h"
 #include "http_core.h"
+#include "apr_strings.h"
+#include "apr_network_io.h"
 
 
 typedef struct 
 {
-	char			*Host;
+	const char		*Host;
 	int				Port;
-	int				Sock;
 	int				Enabled;
 } tunnel_state;
 

@@ -1,5 +1,5 @@
 /***************************************************************************
-	revision             : $Id: mod_tunnel.c,v 1.1.1.1 2004-09-13 15:11:05 tellini Exp $
+	revision             : $Id: mod_tunnel.c,v 1.2 2009-04-11 17:26:41 tellini Exp $
     copyright            : (C) 2004 by Simone Tellini
     email                : tellini@users.sourceforge.net
  ***************************************************************************/
@@ -19,18 +19,22 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <netinet/in.h>
+#include <netdb.h>
+
+#define CORE_PRIVATE
 
 #include "mod_tunnel.h"
 
-#define MOD_TUNNEL_VERSION_INFO_STRING	"mod_tunnel/1.0"
-#define MODTUNNEL_TIMEOUT				300
+#define MOD_TUNNEL_VERSION_INFO_STRING	"mod_tunnel/2.0"
 #define TUNNEL_HANDLER					"tunnel-handler"
 
-module MODULE_VAR_EXPORT tunnel_module;
+static int tunnel_method;
+
+module AP_MODULE_DECLARE_DATA tunnel_module;
 
 // ------------------- UTILITY FUNCS -----------------
 
-static char *set_host( cmd_parms *parms, void *dummy, char *arg )
+static const char *set_host( cmd_parms *parms, void *dummy, const char *arg )
 {
 	tunnel_state *cfg = (tunnel_state *) ap_get_module_config( parms->server->module_config, &tunnel_module );
 
@@ -39,7 +43,7 @@ static char *set_host( cmd_parms *parms, void *dummy, char *arg )
 	return( NULL );
 }
 
-static char *set_port( cmd_parms *parms, void *dummy, char *arg )
+static const char *set_port( cmd_parms *parms, void *dummy, const char *arg )
 {
 	tunnel_state *cfg = (tunnel_state *) ap_get_module_config( parms->server->module_config, &tunnel_module );
 
@@ -48,97 +52,56 @@ static char *set_port( cmd_parms *parms, void *dummy, char *arg )
 	return( NULL );
 }
 
-static char *set_enabled( cmd_parms *parms, void *dummy, char *arg )
+static const char *set_enabled( cmd_parms *parms, void *dummy, int arg )
 {
 	tunnel_state *cfg = (tunnel_state *) ap_get_module_config( parms->server->module_config, &tunnel_module );
 
-	cfg->Enabled = strcmp( arg, "on" ) == 0;
+	cfg->Enabled = arg;
 
 	return( NULL );
 }
 
-static int resolve_name( const char *name )
+static apr_socket_t *open_sock( tunnel_state *cfg, apr_pool_t *p )
 {
-	struct in_addr		addr;
-	struct hostent		*host;
+	apr_sockaddr_t	*sa;
+	apr_socket_t	*ret;
 
-	memset( &addr, 0, sizeof( addr ));
+	if( apr_sockaddr_info_get( &sa, cfg->Host, APR_UNSPEC, cfg->Port, APR_IPV4_ADDR_OK, p ) == APR_SUCCESS ) {
 
-	if(( addr.s_addr = inet_addr( name )) == -1 ) {
+		if( apr_socket_create( &ret, AF_INET, SOCK_STREAM, IPPROTO_TCP, p ) == APR_SUCCESS ) {
 
-		if( host = gethostbyname( name ))
-			memcpy( &addr.s_addr, host->h_addr, sizeof( addr.s_addr ));
-	}
-
-	return( addr.s_addr );
-}
-
-static int open_sock( tunnel_state *cfg )
-{
-	struct sockaddr_in	addr;
-
-	memset( &addr, 0, sizeof( addr ));
-
-	addr.sin_family	= AF_INET;
-	addr.sin_port	= htons( cfg->Port );
-
-	if( addr.sin_addr.s_addr = resolve_name( cfg->Host )) {
-
-		cfg->Sock = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );
-
-		if( cfg->Sock >= 0 ) {
-
-			if( connect( cfg->Sock, (struct sockaddr *)&addr, sizeof( addr )) < 0 ) {
+			if( apr_socket_connect( ret, sa ) != APR_SUCCESS ) {
 			
-				close( cfg->Sock );
+				apr_socket_close( ret );
 			
-				cfg->Sock = -1;
+				ret = NULL;
 			}
 		}
 	}
 		
-	return( cfg->Sock >= 0 );
+	return( ret );
 }
 
 
 // ------------------- HOOKS -----------------
 	
 /* Set up space for the various major configuration options */
-static void *tunnel_make_state( pool *p, server_rec *s )
+static void *tunnel_make_state( apr_pool_t *p, server_rec *s )
 {
-	tunnel_state *cfg = ( tunnel_state * ) ap_palloc( p, sizeof( tunnel_state ));
+	tunnel_state *cfg = ( tunnel_state * ) apr_pcalloc( p, sizeof( tunnel_state ));
 
 	memset( cfg, 0, sizeof( *cfg ));
 
 	return( cfg );
 }
 
-/* Called on the exit of an httpd child process */
-static void tunnel_child_exit( server_rec *s, pool *p )
+static int mod_tunnel_init( apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s )
 {
-	tunnel_state *cfg = ap_get_module_config( s->module_config, &tunnel_module );
+	tunnel_method = ap_method_register( pconf, "TUNNEL" );
 
-	close( cfg->Sock );
+	ap_add_version_component( pconf, MOD_TUNNEL_VERSION_INFO_STRING );
 
-	cfg->Sock = -1;
-}
-
-static void mod_tunnel_init( server_rec *server, pool *p )
-{
-	ap_add_version_component( MOD_TUNNEL_VERSION_INFO_STRING );
-}
-
-static int tunnel_type_checker( request_rec *r )
-{
-	tunnel_state	*cfg = ap_get_module_config( r->server->module_config, &tunnel_module );
-	int				ret = DECLINED;
-
-	if( cfg->Enabled && !strcmp( r->method, "TUNNEL" )) {
-		r->handler = TUNNEL_HANDLER;
-		ret        = OK;
-	}
-
-	return( ret );
+	return( OK );
 }
 
 static int tunnel_handler( request_rec *r )
@@ -148,71 +111,90 @@ static int tunnel_handler( request_rec *r )
 
 	if( cfg->Enabled ) {
 		   
-		if( !strcmp( r->method, "TUNNEL" )) {
-			BUFF *client = r->connection->client;
+		if( r->method_number == tunnel_method ) {
+			struct apr_socket_t *client = ap_get_module_config( r->connection->conn_config, &core_module );
+			apr_pollset_t 		*pollset;
+			apr_socket_t		*sock;
 
 			ret = OK;
 
-			// disable write buffering
-			ap_bsetflag( client, B_WR, 0 );
+			// we're a tunnel
+			r->output_filters             = NULL;
+			r->connection->output_filters = NULL;
 
-			if( open_sock( cfg )) {
-				int	go = 1, maxfd;
+			if( apr_pollset_create( &pollset, 2, r->pool, 0 ) != APR_SUCCESS )
+				return( HTTP_INTERNAL_SERVER_ERROR );
 
-				ap_bwrite( client, "+OK\n", 4 );
+			if( sock = open_sock( cfg, r->pool )) {
+				apr_size_t			len = 4;
+				apr_pollfd_t 		pollfd;
+				const apr_pollfd_t	*fds;
+				apr_int32_t 		pollcnt;
+				apr_status_t		status;
 
-				maxfd = (( client->fd > cfg->Sock ) ? client->fd : cfg->Sock ) + 1;
+				apr_socket_send( client, "+OK\n", &len );
 
-				do {
-					fd_set			fds;
-					struct timeval	to;
+				pollfd.p           = r->pool;
+				pollfd.desc_type   = APR_POLL_SOCKET;
+				pollfd.reqevents   = APR_POLLIN;
+				pollfd.desc.s      = client;
+				pollfd.client_data = NULL;
 
-					FD_ZERO( &fds );
-					FD_SET( client->fd, &fds );
-					FD_SET( cfg->Sock, &fds );
+				apr_pollset_add( pollset, &pollfd );
 
-					memset( &to, 0, sizeof( to ));
+				pollfd.desc.s = sock;
 
-					to.tv_sec = MODTUNNEL_TIMEOUT;
+				apr_pollset_add( pollset, &pollfd );
 
-					if( select( maxfd, &fds, NULL, NULL, &to ) > 0 ) {
-						char buf[ 1024 * 64 ];
-						int	 len;
+				status = apr_pollset_poll( pollset, r->server->timeout, &pollcnt, &fds );
 
-						if( FD_ISSET( client->fd, &fds )) {
+				while( status == APR_SUCCESS ) {
 
-							if(( len = recv( client->fd, buf, sizeof( buf ), 0 )) > 0 )
-								send( cfg->Sock, buf, len, 0 );
+					while(( status == APR_SUCCESS ) && ( pollcnt-- > 0 )) {
+						char	buf[ 1024 * 64 ];
+
+						len = sizeof( buf );
+
+						if( fds->rtnevents & APR_POLLIN ) {
+
+							if( fds->desc.s != sock ) {
+
+								if(( status = apr_socket_recv( client, buf, &len )) == APR_SUCCESS )
+									status = apr_socket_send( sock, buf, &len );
 							
-						} else {
+							} else if(( status = apr_socket_recv( sock, buf, &len )) == APR_SUCCESS )
+								status = apr_socket_send( client, buf, &len );
+						
+						} else if( fds->rtnevents & ( APR_POLLERR | APR_POLLHUP ))
+							status = APR_EOF;
 
-							if(( len = recv( cfg->Sock, buf, sizeof( buf ), 0 )) > 0 )
-								send( client->fd, buf, len, 0 );
-						}
+						fds++;
+					}
 
-						if( len <= 0 )
-							go = 0;
+					if( status == APR_SUCCESS )
+						status = apr_pollset_poll( pollset, r->server->timeout, &pollcnt, &fds );
+				}
 
-					} else
-						go = 0;
-					
-				} while( go );
-
-				close( cfg->Sock );
-
-				cfg->Sock = -1;
+				apr_socket_close( sock );
 
 			} else {
-				char *err = ap_pstrcat( r->pool, "-ERROR: ", strerror( errno ), "\n", NULL );
+				char 		*err = apr_pstrcat( r->pool, "-ERROR: ", strerror( errno ), "\n", NULL );
+				apr_size_t	len = strlen( err );
 
-				ap_bwrite( client, err, strlen( err ));
+				apr_socket_send( client, err, &len );
 			}
 			
 		} else
-			ret = FORBIDDEN;
+			ret = HTTP_FORBIDDEN;
 	}
 
 	return( ret );
+}
+
+static void tunnel_register_hooks( apr_pool_t *p )
+{
+	ap_hook_post_config( mod_tunnel_init, NULL, NULL, APR_HOOK_MIDDLE );
+	ap_hook_handler( tunnel_handler, NULL, NULL, APR_HOOK_FIRST );
 }
 
 // ------------------- MOD CONFIG -----------------
@@ -224,45 +206,26 @@ typedef const char *(*hook_func)();
 
 static const command_rec tunnel_cmds[] = 
 {
-	{ "TunnelEnabled", (hook_func) set_enabled, NULL, RSRC_CONF, TAKE1,
-	  "Set to 'on' (without quotes) to enable the TUNNEL method." },
+	AP_INIT_FLAG( "TunnelEnabled", set_enabled, NULL, RSRC_CONF,
+				  "Enable the TUNNEL method." ),
 
-	{ "TunnelHost", (hook_func) set_host, NULL, RSRC_CONF, TAKE1,
-	  "The host to connect to." },
+	AP_INIT_TAKE1( "TunnelHost", set_host, NULL, RSRC_CONF,
+	  			   "The host to connect to." ),
 
-	{ "TunnelPort", (hook_func) set_port, NULL, RSRC_CONF, TAKE1,
-	  "The port to connect to." },
+	AP_INIT_TAKE1( "TunnelPort", set_port, NULL, RSRC_CONF,
+				   "The port to connect to." ),
 
-	{ NULL }
-};
-
-
-static const handler_rec tunnel_handlers[] =
-{
-	{ TUNNEL_HANDLER, tunnel_handler },
 	{ NULL }
 };
 
 /* The configuration array that sets up the hooks into the module. */
-module tunnel_module = 
+module AP_MODULE_DECLARE_DATA tunnel_module = 
 {
-	STANDARD_MODULE_STUFF,
-	mod_tunnel_init,		 /* initializer */
+	STANDARD20_MODULE_STUFF,
 	NULL,					 /* create per-dir config */
 	NULL,					 /* merge per-dir config */
 	tunnel_make_state,		 /* server config */
 	NULL,					 /* merge server config */
 	tunnel_cmds,			 /* command table */
-	tunnel_handlers,		 /* handlers */
-	NULL,					 /* filename translation */
-	NULL,					 /* check_user_id */
-	NULL,					 /* check auth */
-	NULL,					 /* check access */
-	tunnel_type_checker,	 /* type_checker */
-	NULL,					 /* fixups */
-	NULL,					 /* logger */
-	NULL,					 /* header parser */
-	NULL,                    /* child_init */
-	tunnel_child_exit,		 /* process exit/cleanup */
-	NULL					 /* [#0] post read-request */
+	tunnel_register_hooks,
 };
